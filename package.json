@@ -1,0 +1,19 @@
+{
+  "name": "ipm",
+  "version": "1.0.0",
+  "description": "Interprocess Messenger",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roiemir/ipm.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/roiemir/ipm/issues"
+  },
+  "homepage": "https://github.com/roiemir/ipm#readme"
+}
