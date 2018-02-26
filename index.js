@@ -1,4 +1,5 @@
 var events = require('events'),
+    util = require('util'),
     net = require('net');
 
 function processMessages(connection, callback) {
@@ -51,11 +52,14 @@ function MessageConnection(name, callback) {
 
 util.inherits(MessageConnection, events.EventEmitter);
 
-MessageConnection.prototype.send = function (message) {
+MessageConnection.prototype.send = function (message, callback) {
     var messageBuffer = Buffer.from(JSON.stringify(message));
     var buffer = Buffer.alloc(4 + messageBuffer.length);
     buffer.writeUInt32LE(messageBuffer.length, 0);
     messageBuffer.copy(buffer, 4);
+    if (callback) {
+        this.once('message', callback);
+    }
     this._stream.write(buffer);
 };
 
