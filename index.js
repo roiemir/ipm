@@ -1,5 +1,6 @@
 var events = require('events'),
     util = require('util'),
+    fs = require('fs'),
     net = require('net');
 
 function getPipePath(name) {
@@ -110,7 +111,12 @@ MessageServer.prototype.listen = function (callback) {
     if (callback) {
         this.on('connection', callback);
     }
-    this._server.listen(getPipePath(this._name));
+    var pipePath = getPipePath(this._name);
+    // On linux - making sure there is no pipe file so that the listen will succeed
+    if (process.platform !== "win32" && fs.existsSync(pipePath)) {
+        fs.unlinkSync(pipePath);
+    }
+    this._server.listen(pipePath);
 };
 
 MessageServer.prototype.close = function (callback) {
