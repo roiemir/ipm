@@ -2,6 +2,12 @@ var events = require('events'),
     util = require('util'),
     net = require('net');
 
+function getPipePath(name) {
+    return process.platform === "win32"
+        ? '\\\\.\\pipe\\' + name
+        : '/tmp/' + name + '.ipm';
+}
+
 function processMessages(connection, callback) {
     while (connection._buffer.length > 4) {
         var length = connection._buffer.readUInt32LE(0);
@@ -28,7 +34,7 @@ function MessageConnection(name, callback) {
         if (callback) {
             connection.on('message', callback);
         }
-        connection._stream = net.connect('\\\\.\\pipe\\' + name);
+        connection._stream = net.connect(getPipePath(name));
         connection._stream.on('data', function (b) {
             if (connection._buffer) {
                 connection._buffer = Buffer.concat([connection._buffer, b]);
@@ -104,7 +110,7 @@ MessageServer.prototype.listen = function (callback) {
     if (callback) {
         this.on('connection', callback);
     }
-    this._server.listen('\\\\.\\pipe\\' + this._name);
+    this._server.listen(getPipePath(this._name));
 };
 
 MessageServer.prototype.close = function (callback) {
