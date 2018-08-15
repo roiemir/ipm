@@ -67,6 +67,9 @@ MessageConnection.prototype.send = function (message, callback) {
     if (callback) {
         this.once('message', callback);
     }
+	this._stream.on('error', function (err) {
+		callback({err: err});
+	});
     this._stream.write(buffer);
 };
 
