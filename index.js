@@ -63,6 +63,7 @@ MessageConnection.prototype.send = function (message, callback) {
     var connection = this;
     if (!connection._stream) {
         callback({err: "Disconnected"});
+        return;
     }
     var messageBuffer = Buffer.from(JSON.stringify(message));
     var buffer = Buffer.alloc(4 + messageBuffer.length);
