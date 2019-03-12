@@ -61,11 +61,16 @@ util.inherits(MessageConnection, events.EventEmitter);
 
 MessageConnection.prototype.send = function (message, callback) {
     var connection = this;
+    if (!connection._stream) {
+        callback({err: "Disconnected"});
+    }
     var messageBuffer = Buffer.from(JSON.stringify(message));
     var buffer = Buffer.alloc(4 + messageBuffer.length);
 	
 	function errorHandler(err) {
-		connection._stream.removeListener('error', errorHandler);
+	    if (connection._stream) {
+            connection._stream.removeListener('error', errorHandler);
+        }
 		if (callback) {
 			callback({err: err});
 		}
@@ -75,7 +80,9 @@ MessageConnection.prototype.send = function (message, callback) {
     messageBuffer.copy(buffer, 4);
     if (callback) {
         connection.once('message', function (response) {
-			connection._stream.removeListener('error', errorHandler);
+            if (connection._stream) {
+                connection._stream.removeListener('error', errorHandler);
+            }
 			callback(response);
 		});
     }
