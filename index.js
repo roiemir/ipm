@@ -29,6 +29,7 @@ function processMessages(connection, callback) {
 }
 
 function MessageConnection(name, callback) {
+    this.requestId = 0;
     // No name - stream and messaging is handle by message server
     if (name) {
         var connection = this;
@@ -65,26 +66,39 @@ MessageConnection.prototype.send = function (message, callback) {
         callback({err: "Disconnected"});
         return;
     }
-    var messageBuffer = Buffer.from(JSON.stringify(message));
-    var buffer = Buffer.alloc(4 + messageBuffer.length);
-	
-	function errorHandler(err) {
-	    if (connection._stream) {
+
+    function errorHandler(err) {
+        if (connection._stream) {
             connection._stream.removeListener('error', errorHandler);
         }
-		if (callback) {
-			callback({err: err});
-		}
-	}
-	
+        if (callback) {
+            connection.removeListener('message', responseHandler);
+            callback({err: err});
+        }
+    }
+
+    function responseHandler(response) {
+        if (message.__id__ === response.__id__) {
+            delete response.__id__;
+            connection.removeListener('message', responseHandler);
+            callback(response);
+        }
+    }
+
+    if (callback) {
+        this.requestId++;
+        if (this.requestId > 65535) {
+            this.requestId = 1;
+        }
+        message.__id__ = this.requestId;
+        connection.on('message', responseHandler);
+    }
+
+    var messageBuffer = Buffer.from(JSON.stringify(message));
+    var buffer = Buffer.alloc(4 + messageBuffer.length);
     buffer.writeUInt32LE(messageBuffer.length, 0);
     messageBuffer.copy(buffer, 4);
-    if (callback) {
-        connection.once('message', function (response) {
-            callback(response);
-		});
-    }
-	connection._stream.on('error', errorHandler);
+    connection._stream.on('error', errorHandler);
     connection._stream.write(buffer, 'utf-8', function () {
         if (connection._stream) {
             connection._stream.removeListener('error', errorHandler);
@@ -115,7 +129,20 @@ function MessageServer(name) {
             }
 
             processMessages(connection, function (message) {
-                messageServer.emit('message', message, connection);
+                if (message.__id__) {
+                    var response = {
+                        __id__: message.__id__,
+                        send: function (message) {
+                            message.__id__ = this.__id__;
+                            connection.send(message);
+                        }
+                    };
+                    delete message.__id__;
+                    messageServer.emit('message', message, response);
+                }
+                else {
+                    messageServer.emit('message', message, connection);
+                }
                 connection.emit('message', message);
             });
         });
