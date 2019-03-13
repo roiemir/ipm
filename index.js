@@ -81,14 +81,15 @@ MessageConnection.prototype.send = function (message, callback) {
     messageBuffer.copy(buffer, 4);
     if (callback) {
         connection.once('message', function (response) {
-            if (connection._stream) {
-                connection._stream.removeListener('error', errorHandler);
-            }
-			callback(response);
+            callback(response);
 		});
     }
 	connection._stream.on('error', errorHandler);
-    connection._stream.write(buffer);
+    connection._stream.write(buffer, 'utf-8', function () {
+        if (connection._stream) {
+            connection._stream.removeListener('error', errorHandler);
+        }
+    });
 };
 
 MessageConnection.prototype.close = function () {
