@@ -63,7 +63,9 @@ util.inherits(MessageConnection, events.EventEmitter);
 MessageConnection.prototype.send = function (message, callback) {
     var connection = this;
     if (!connection._stream) {
-        callback({err: "Disconnected"});
+        if (callback) {
+            callback({err: "Disconnected"});
+        }
         return;
     }
 
