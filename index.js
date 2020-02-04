@@ -77,6 +77,7 @@ MessageConnection.prototype.send = function (message, callback) {
             connection.removeListener('message', responseHandler);
             callback({err: err});
         }
+        connection.close();
     }
 
     function responseHandler(response) {
@@ -109,8 +110,10 @@ MessageConnection.prototype.send = function (message, callback) {
 };
 
 MessageConnection.prototype.close = function () {
-    this._stream.end();
-    this._stream = null;
+    if (this._stream) {
+        this._stream.end();
+        this._stream = null;
+    }
 };
 
 function MessageServer(name) {
