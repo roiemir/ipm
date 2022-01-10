@@ -30,6 +30,9 @@ function processMessages(connection, callback) {
 
 function MessageConnection(name, callback) {
     this.requestId = 0;
+    this.responseTimeout = 60000;
+    this.maximumTimeouts = 3;
+    this.timeouts = 0;
     // No name - stream and messaging is handle by message server
     if (name) {
         var connection = this;
@@ -61,6 +64,7 @@ function MessageConnection(name, callback) {
 util.inherits(MessageConnection, events.EventEmitter);
 
 MessageConnection.prototype.send = function (message, callback) {
+    var timeout = null;
     var connection = this;
     if (!connection._stream) {
         if (callback) {
@@ -82,9 +86,26 @@ MessageConnection.prototype.send = function (message, callback) {
 
     function responseHandler(response) {
         if (message.__id__ === response.__id__) {
+            connection.timeouts = 0;
+            if (timeout !== null) {
+                clearTimeout(timeout);
+                timeout = null;
+            }
             delete response.__id__;
             connection.removeListener('message', responseHandler);
             callback(response);
+        }
+    }
+
+    function responseTimeout() {
+        if (connection._stream) {
+            connection._stream.removeListener('error', errorHandler);
+        }
+
+        connection.removeListener('message', responseHandler);
+        callback({err: "Response Timeout"});
+        if (++connection.timeouts >= connection.maximumTimeouts) {
+            connection.close();
         }
     }
 
@@ -95,6 +116,7 @@ MessageConnection.prototype.send = function (message, callback) {
         }
         message.__id__ = this.requestId;
         connection.on('message', responseHandler);
+        timeout = setTimeout(responseTimeout, this.responseTimeout);
     }
 
     var messageBuffer = Buffer.from(JSON.stringify(message));
