@@ -39,23 +39,30 @@ function MessageConnection(name, callback) {
         if (callback) {
             connection.on('message', callback);
         }
-        connection._stream = net.connect(getPipePath(name));
-        connection._stream.on('data', function (b) {
-            if (connection._buffer) {
-                connection._buffer = Buffer.concat([connection._buffer, b]);
+        var stream = net.connect(getPipePath(name));
+        stream.on('error', function (err) {
+            if (callback) {
+                callback(err);
             }
-            else {
-                connection._buffer = b;
-            }
-
-            processMessages(connection, function (message) {
-                connection.emit('message', message);
-            });
         });
+        stream.on('ready', function () {
+            connection._stream = stream;
+            connection._stream.on('data', function (b) {
+                if (connection._buffer) {
+                    connection._buffer = Buffer.concat([connection._buffer, b]);
+                } else {
+                    connection._buffer = b;
+                }
 
-        connection._stream.on('end', function () {
-            connection._stream = null;
-            connection.emit('end');
+                processMessages(connection, function (message) {
+                    connection.emit('message', message);
+                });
+            });
+
+            connection._stream.on('end', function () {
+                connection._stream = null;
+                connection.emit('end');
+            });
         });
     }
 }
@@ -75,10 +82,10 @@ MessageConnection.prototype.send = function (message, callback) {
 
     function errorHandler(err) {
         if (connection._stream) {
-            connection._stream.removeListener('error', errorHandler);
+            connection._stream.off('error', errorHandler);
         }
         if (callback) {
-            connection.removeListener('message', responseHandler);
+            connection.off('message', responseHandler);
             callback({err: err});
         }
         connection.close();
@@ -92,17 +99,17 @@ MessageConnection.prototype.send = function (message, callback) {
                 timeout = null;
             }
             delete response.__id__;
-            connection.removeListener('message', responseHandler);
+            connection.off('message', responseHandler);
             callback(response);
         }
     }
 
     function responseTimeout() {
         if (connection._stream) {
-            connection._stream.removeListener('error', errorHandler);
+            connection._stream.off('error', errorHandler);
         }
 
-        connection.removeListener('message', responseHandler);
+        connection.off('message', responseHandler);
         callback({err: "Response Timeout"});
         if (++connection.timeouts >= connection.maximumTimeouts) {
             connection.close();
@@ -126,7 +133,7 @@ MessageConnection.prototype.send = function (message, callback) {
     connection._stream.on('error', errorHandler);
     connection._stream.write(buffer, 'utf-8', function () {
         if (connection._stream) {
-            connection._stream.removeListener('error', errorHandler);
+            connection._stream.off('error', errorHandler);
         }
     });
 };
@@ -188,11 +195,16 @@ MessageServer.prototype.listen = function (callback) {
         this.on('connection', callback);
     }
     var pipePath = getPipePath(this._name);
-    // On linux - making sure there is no pipe file so that the listen will succeed
-    if (process.platform !== "win32" && fs.existsSync(pipePath)) {
-        fs.unlinkSync(pipePath);
+    if (process.platform === "win32") {
+        this._server.listen(pipePath);
     }
-    this._server.listen(pipePath);
+    else {
+        // On linux - making sure there is no pipe file so that the listen will succeed
+        if (fs.existsSync(pipePath)) {
+            fs.unlinkSync(pipePath);
+        }
+        this._server.listen(pipePath);
+    }
 };
 
 MessageServer.prototype.close = function (callback) {
