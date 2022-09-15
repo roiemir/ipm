@@ -63,6 +63,8 @@ function MessageConnection(name, callback) {
                 connection._stream = null;
                 connection.emit('end');
             });
+
+            connection.emit('ready');
         });
     }
 }
