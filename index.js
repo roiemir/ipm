@@ -42,7 +42,7 @@ function MessageConnection(name, callback) {
         var stream = net.connect(getPipePath(name));
         stream.on('error', function (err) {
             if (callback) {
-                callback(err);
+                callback({err: err});
             }
         });
         stream.on('ready', function () {
