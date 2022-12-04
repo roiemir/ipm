@@ -39,14 +39,13 @@ function MessageConnection(name, callback) {
         if (callback) {
             connection.on('message', callback);
         }
-        var stream = net.connect(getPipePath(name));
-        stream.on('error', function (err) {
+        connection._stream = net.connect(getPipePath(name));
+        connection._stream.on('error', function (err) {
             if (callback) {
                 callback({err: err});
             }
         });
-        stream.on('ready', function () {
-            connection._stream = stream;
+        connection._stream.on('ready', function () {
             connection._stream.on('data', function (b) {
                 if (connection._buffer) {
                     connection._buffer = Buffer.concat([connection._buffer, b]);
