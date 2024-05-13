@@ -85,8 +85,9 @@ MessageConnection.prototype.send = function (message, callback) {
         if (connection._stream) {
             connection._stream.off('error', errorHandler);
         }
-        if (callback) {
+        if (message.__id__) {
             connection.off('message', responseHandler);
+            delete message.__id__;
             callback({err: err});
         }
         connection.close();
@@ -99,8 +100,8 @@ MessageConnection.prototype.send = function (message, callback) {
                 clearTimeout(timeout);
                 timeout = null;
             }
-            delete response.__id__;
             connection.off('message', responseHandler);
+            delete message.__id__;
             callback(response);
         }
     }
@@ -110,8 +111,11 @@ MessageConnection.prototype.send = function (message, callback) {
             connection._stream.off('error', errorHandler);
         }
 
-        connection.off('message', responseHandler);
-        callback({err: "Response Timeout"});
+        if (message.__id__) {
+            connection.off('message', responseHandler);
+            delete message.__id__;
+            callback({err: "Response Timeout"});
+        }
         if (++connection.timeouts >= connection.maximumTimeouts) {
             connection.close();
         }
