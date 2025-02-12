@@ -85,6 +85,10 @@ MessageConnection.prototype.send = function (message, callback) {
         if (connection._stream) {
             connection._stream.off('error', errorHandler);
         }
+        if (timeout !== null) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
         if (message.__id__) {
             connection.off('message', responseHandler);
             delete message.__id__;
